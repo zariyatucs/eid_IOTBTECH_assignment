@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🎬 Movie Finder</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "Segoe UI", sans-serif;
+        background: #0a0a14;
+        color: #e2e8f0;
+        min-height: 100vh;
+      }
+      header {
+        background: #13131f;
+        padding: 1rem 2rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        border-bottom: 1px solid #1e293b;
+      }
+      header h1 {
+        font-size: 1.3rem;
+        color: #a78bfa;
+        white-space: nowrap;
+      }
+      .search-wrap {
+        flex: 1;
+        max-width: 500px;
+        position: relative;
+      }
+      #search-input {
+        width: 100%;
+        padding: 0.65rem 1rem;
+        border-radius: 999px;
+        border: 1.5px solid #334155;
+        background: #1e293b;
+        color: #e2e8f0;
+        font-size: 0.95rem;
+        outline: none;
+      }
+      #search-input:focus {
+        border-color: #a78bfa;
+      }
+      .nav-actions {
+        margin-left: auto;
+      }
+      #fav-btn {
+        background: #1e293b;
+        border: 1.5px solid #334155;
+        color: #e2e8f0;
+        padding: 0.5rem 1rem;
+        border-radius: 999px;
+        cursor: pointer;
+        font-size: 0.85rem;
+      }
+      #fav-btn:hover {
+        border-color: #a78bfa;
+        color: #a78bfa;
+      }
+
+      main {
+        padding: 1.5rem 2rem;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      .section-title {
+        font-size: 1rem;
+        color: #94a3b8;
+        margin-bottom: 1rem;
+      }
+
+      /* Grid */
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 1.25rem;
+      }
+
+      /* Card */
+      .movie-card {
+        background: #13131f;
+        border-radius: 12px;
+        overflow: hidden;
+        cursor: pointer;
+        border: 1.5px solid transparent;
+        transition:
+          border-color 0.2s,
+          transform 0.2s,
+          box-shadow 0.2s;
+      }
+      .movie-card:hover {
+        border-color: #a78bfa;
+        transform: translateY(-4px);
+        box-shadow: 0 8px 30px rgba(167, 139, 250, 0.2);
+      }
+      .movie-card img {
+        width: 100%;
+        aspect-ratio: 2/3;
+        object-fit: cover;
+        display: block;
+        background: #1e293b;
+      }
+      .movie-card .info {
+        padding: 0.75rem;
+      }
+      .movie-card .title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+      }
+      .movie-card .year {
+        font-size: 0.75rem;
+        color: #94a3b8;
+      }
+      .fav-star {
+        float: right;
+        cursor: pointer;
+        font-size: 1rem;
+        line-height: 1;
+      }
+
+      /* Status */
+      .status {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #94a3b8;
+      }
+      .status .icon {
+        font-size: 3rem;
+        margin-bottom: 0.75rem;
+      }
+      .loading-dots span {
+        animation: blink 1.2s infinite;
+        display: inline-block;
+        margin: 0 2px;
+        font-size: 1.5rem;
+      }
+      .loading-dots span:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      .loading-dots span:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+      @keyframes blink {
+        0%,
+        80%,
+        100% {
+          opacity: 0;
+        }
+        40% {
+          opacity: 1;
+        }
+      }
+
+      /* Pagination */
+      .pagination {
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-top: 2rem;
+      }
+      .pagination button {
+        background: #1e293b;
+        border: 1.5px solid #334155;
+        color: #e2e8f0;
+        padding: 0.4rem 0.9rem;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      .pagination button:hover {
+        border-color: #a78bfa;
+      }
+      .pagination button.active {
+        background: #a78bfa;
+        color: #0a0a14;
+        border-color: #a78bfa;
+      }
+      .pagination button:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+
+      /* Detail Modal */
+      .detail-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 200;
+        align-items: flex-start;
+        justify-content: center;
+        overflow-y: auto;
+        padding: 2rem 1rem;
+      }
+      .detail-backdrop.open {
+        display: flex;
+      }
+      .detail-box {
+        background: #13131f;
+        border-radius: 16px;
+        width: min(700px, 100%);
+        overflow: hidden;
+        position: relative;
+        margin: auto;
+      }
+      .detail-close {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: #1e293b;
+        border: none;
+        color: #e2e8f0;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 1rem;
+        z-index: 10;
+      }
+      .detail-hero {
+        display: flex;
+        gap: 1.5rem;
+        padding: 1.5rem;
+      }
+      .detail-poster {
+        width: 150px;
+        min-width: 150px;
+        border-radius: 10px;
+        object-fit: cover;
+        aspect-ratio: 2/3;
+        background: #1e293b;
+      }
+      .detail-info h2 {
+        font-size: 1.4rem;
+        margin-bottom: 0.5rem;
+      }
+      .detail-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+      }
+      .tag {
+        background: #1e293b;
+        border-radius: 999px;
+        padding: 2px 10px;
+        font-size: 0.75rem;
+        color: #94a3b8;
+      }
+      .detail-plot {
+        color: #cbd5e1;
+        font-size: 0.9rem;
+        line-height: 1.6;
+        padding: 0 1.5rem 1.5rem;
+      }
+      .detail-cast {
+        padding: 0 1.5rem 1.5rem;
+        font-size: 0.85rem;
+        color: #94a3b8;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>🎬 MovieFinder</h1>
+      <div class="search-wrap">
+        <input
+          id="search-input"
+          type="search"
+          placeholder="Search movies..."
+          autocomplete="off"
+          aria-label="Search movies"
+        />
+      </div>
+      <div class="nav-actions">
+        <button id="fav-btn">❤️ Favourites</button>
+      </div>
+    </header>
+
+    <main>
+      <p class="section-title" id="section-label">Popular right now</p>
+      <div id="content"></div>
+      <div class="pagination" id="pagination"></div>
+    </main>
+
+    <div class="detail-backdrop" id="detail-backdrop">
+      <div class="detail-box" id="detail-box">
+        <button class="detail-close" id="detail-close">✕</button>
+        <div class="detail-hero">
+          <img id="d-poster" class="detail-poster" src="" alt="" />
+          <div class="detail-info">
+            <h2 id="d-title"></h2>
+            <div class="detail-meta" id="d-meta"></div>
+            <p id="d-rating" style="color: #fbbf24; margin-bottom: 0.5rem"></p>
+          </div>
+        </div>
+        <p class="detail-plot" id="d-plot"></p>
+        <p class="detail-cast" id="d-cast"></p>
+      </div>
+    </div>
+
+    <script>
+      const API_KEY = "trilogy"; // free demo key; limited requests
+      const BASE = "https://www.omdbapi.com/";
+
+      let currentQuery = "";
+      let currentPage = 1;
+      let totalResults = 0;
+      let showingFavs = false;
+      let debounceTimer;
+
+      function getFavs() {
+        return JSON.parse(localStorage.getItem("mf_favs") || "{}");
+      }
+      function toggleFav(movie) {
+        const favs = getFavs();
+        if (favs[movie.imdbID]) delete favs[movie.imdbID];
+        else
+          favs[movie.imdbID] = {
+            imdbID: movie.imdbID,
+            Title: movie.Title,
+            Year: movie.Year,
+            Poster: movie.Poster,
+          };
+        localStorage.setItem("mf_favs", JSON.stringify(favs));
+      }
+      function isFav(id) {
+        return !!getFavs()[id];
+      }
+
+      async function apiSearch(query, page = 1) {
+        const url = `${BASE}?apikey=${API_KEY}&s=${encodeURIComponent(query)}&type=movie&page=${page}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (data.Response === "False")
+          throw new Error(data.Error || "No results");
+        return data;
+      }
+
+      async function apiDetail(imdbID) {
+        const url = `${BASE}?apikey=${API_KEY}&i=${imdbID}&plot=full`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (data.Response === "False") throw new Error(data.Error);
+        return data;
+      }
+
+      function setContent(html) {
+        document.getElementById("content").innerHTML = html;
+      }
+
+      function renderGrid(movies) {
+        if (!movies.length) {
+          setContent(statusHtml("😕", "No movies found"));
+          return;
+        }
+        const favs = getFavs();
+        const html = `<div class="grid">${movies
+          .map(
+            (m) => `
+    <div class="movie-card" onclick="openDetail('${m.imdbID}')">
+      <img src="${m.Poster !== "N/A" ? m.Poster : "https://via.placeholder.com/160x240?text=No+Image"}" alt="${escHtml(m.Title)}" loading="lazy">
+      <div class="info">
+        <span class="fav-star" onclick="handleFav(event,'${m.imdbID}','${escHtml(m.Title)}','${m.Year}','${m.Poster}')">${favs[m.imdbID] ? "❤️" : "🤍"}</span>
+        <div class="title">${escHtml(m.Title)}</div>
+        <div class="year">${m.Year}</div>
+      </div>
+    </div>`,
+          )
+          .join("")}</div>`;
+        setContent(html);
+      }
+
+      function statusHtml(icon, msg) {
+        return `<div class="status"><div class="icon">${icon}</div><p>${msg}</p></div>`;
+      }
+
+      function loadingHtml() {
+        return `<div class="status"><div class="loading-dots"><span>●</span><span>●</span><span>●</span></div><p>Searching...</p></div>`;
+      }
+
+      function renderPagination(page, total) {
+        const pages = Math.ceil(total / 10);
+        const el = document.getElementById("pagination");
+        if (pages <= 1) {
+          el.innerHTML = "";
+          return;
+        }
+        let html = `<button onclick="goPage(${page - 1})" ${page === 1 ? "disabled" : ""}>‹ Prev</button>`;
+        const start = Math.max(1, page - 2),
+          end = Math.min(pages, page + 2);
+        for (let i = start; i <= end; i++) {
+          html += `<button class="${i === page ? "active" : ""}" onclick="goPage(${i})">${i}</button>`;
+        }
+        html += `<button onclick="goPage(${page + 1})" ${page === pages ? "disabled" : ""}>Next ›</button>`;
+        el.innerHTML = html;
+      }
+
+      async function doSearch(query, page = 1) {
+        currentQuery = query;
+        currentPage = page;
+        showingFavs = false;
+        document.getElementById("section-label").textContent =
+          `Results for "${query}"`;
+        setContent(loadingHtml());
+        document.getElementById("pagination").innerHTML = "";
+        try {
+          const data = await apiSearch(query, page);
+          totalResults = parseInt(data.totalResults);
+          renderGrid(data.Search);
+          renderPagination(page, totalResults);
+        } catch (err) {
+          setContent(
+            statusHtml(
+              "⚠️",
+              err.message === "Movie not found!"
+                ? "No movies found — try a different search."
+                : `Error: ${err.message}`,
+            ),
+          );
+        }
+      }
+
+      function goPage(p) {
+        doSearch(currentQuery, p);
+        window.scrollTo(0, 0);
+      }
+
+      document.getElementById("search-input").addEventListener("input", (e) => {
+        clearTimeout(debounceTimer);
+        const q = e.target.value.trim();
+        if (!q) {
+          showDefault();
+          return;
+        }
+        debounceTimer = setTimeout(() => doSearch(q, 1), 500);
+      });
+
+      function showDefault() {
+        showingFavs = false;
+        currentQuery = "";
+        document.getElementById("section-label").textContent =
+          "Popular right now";
+        document.getElementById("pagination").innerHTML = "";
+
+        doSearch("avengers", 1);
+        document.getElementById("section-label").textContent =
+          "Popular right now";
+      }
+
+      document.getElementById("fav-btn").addEventListener("click", () => {
+        showingFavs = true;
+        currentQuery = "";
+        document.getElementById("section-label").textContent =
+          "❤️ Your Favourites";
+        document.getElementById("pagination").innerHTML = "";
+        const favs = Object.values(getFavs());
+        if (!favs.length) {
+          setContent(
+            statusHtml("💔", "No favourites yet — click 🤍 on any movie"),
+          );
+          return;
+        }
+        renderGrid(favs);
+      });
+
+      function handleFav(e, id, title, year, poster) {
+        e.stopPropagation();
+        toggleFav({ imdbID: id, Title: title, Year: year, Poster: poster });
+        e.target.textContent = isFav(id) ? "❤️" : "🤍";
+        if (showingFavs) {
+          const favs = Object.values(getFavs());
+          if (!favs.length) setContent(statusHtml("💔", "No favourites yet"));
+          else renderGrid(favs);
+        }
+      }
+
+      async function openDetail(id) {
+        const bd = document.getElementById("detail-backdrop");
+        bd.classList.add("open");
+        document.getElementById("d-title").textContent = "Loading…";
+        document.getElementById("d-plot").textContent = "";
+        document.getElementById("d-meta").innerHTML = "";
+        document.getElementById("d-cast").textContent = "";
+        document.getElementById("d-rating").textContent = "";
+        document.getElementById("d-poster").src = "";
+        try {
+          const m = await apiDetail(id);
+          document.getElementById("d-poster").src =
+            m.Poster !== "N/A"
+              ? m.Poster
+              : "https://via.placeholder.com/150x225?text=No+Image";
+          document.getElementById("d-poster").alt = m.Title;
+          document.getElementById("d-title").textContent = m.Title;
+          document.getElementById("d-rating").textContent =
+            m.imdbRating !== "N/A" ? `⭐ ${m.imdbRating} / 10` : "";
+          document.getElementById("d-meta").innerHTML = [
+            m.Year,
+            m.Runtime,
+            m.Genre,
+            m.Rated,
+          ]
+            .filter((v) => v && v !== "N/A")
+            .map((v) => `<span class="tag">${v}</span>`)
+            .join("");
+          document.getElementById("d-plot").textContent =
+            m.Plot !== "N/A" ? m.Plot : "No plot available.";
+          document.getElementById("d-cast").textContent = [
+            m.Director !== "N/A" ? `Director: ${m.Director}` : "",
+            m.Actors !== "N/A" ? `Cast: ${m.Actors}` : "",
+          ]
+            .filter(Boolean)
+            .join(" · ");
+        } catch (err) {
+          document.getElementById("d-title").textContent = "Failed to load";
+          document.getElementById("d-plot").textContent = err.message;
+        }
+      }
+
+      document
+        .getElementById("detail-close")
+        .addEventListener("click", () =>
+          document.getElementById("detail-backdrop").classList.remove("open"),
+        );
+      document
+        .getElementById("detail-backdrop")
+        .addEventListener("click", (e) => {
+          if (e.target === e.currentTarget)
+            e.currentTarget.classList.remove("open");
+        });
+
+      function escHtml(str) {
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      showDefault();
+    </script>
+  </body>
+</html>
